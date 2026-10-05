@@ -1,0 +1,8 @@
+pandas
+numpy
+plotly
+scikit-learn
+lightgbm
+imbalanced-learn
+dash
+dash-bootstrap-components

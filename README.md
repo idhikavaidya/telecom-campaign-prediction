@@ -1,4 +1,4 @@
-# Telecom Campaign: Predicting Plan Subscriptions
+# Telecom Marketing Campaign: Customer Subscription Prediction
 
 Predicting which customers will subscribe to a new telecom plan, so marketing can stop calling people who won't convert.
 

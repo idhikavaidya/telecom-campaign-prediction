@@ -40,7 +40,7 @@ A telecom company contacted 41,188 customers about a new plan, and only **11.26%
 
 ROC-AUC was the main metric. With 88.7% negatives, a model that always predicts "no" gets about 89% accuracy while finding zero subscribers, so accuracy is misleading here.
 
-![Model comparison](docs/images/model_comparison.png)
+![Model comparison](images/model_comparison.png)
 
 ## Key insights
 - **Re-contact past converters:** a successful previous campaign was the strongest behavioural predictor (χ² = 4217.7).

@@ -10,7 +10,7 @@ Predicting which customers will subscribe to a new telecom plan, so marketing ca
 
 
 
-![Dashboard](images/dashboard.png)
+![Dashboard](images/dashboard.jpeg)
 
 ---
 

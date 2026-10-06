@@ -8,9 +8,9 @@ Predicting which customers will subscribe to a new telecom plan, so marketing ca
 - **Wasted calls cut from 88.7% to 60.2%** while still reaching **61% of true subscribers**
 - Built a leakage-free pipeline: call duration excluded, SMOTEENN applied only inside training folds
 
-📄 **[Full project report (PDF)](docs/Project_Report.pdf)**
 
-![Dashboard](docs/images/dashboard.png)
+
+![Dashboard](images/dashboard.png)
 
 ---
 
@@ -48,7 +48,7 @@ ROC-AUC was the main metric. With 88.7% negatives, a model that always predicts 
 - **Timing matters:** the 3-month Euribor rate and number of employees were the top predictors. Subscriptions rose when rates were low, and peaked in March, September and October.
 - **Use cellular and cap at 3 calls:** cellular beat telephone, and conversion falls sharply after the third contact.
 
-![Subscription rate by previous outcome](docs/images/prev_outcome.png)
+![Subscription rate by previous outcome](images/prev_outcome.png)
 
 ## Limitations
 - The random train/test split may overstate real-world performance, so a time-based split is the next step.
@@ -65,8 +65,8 @@ Python · pandas · scikit-learn · imbalanced-learn · LightGBM · statsmodels 
 |---|---|
 | `notebooks/Marketing_Campaign_Analysis.ipynb` | Full analysis: cleaning, EDA, statistical tests, modelling, tuning |
 | `telecom_dashboard.py` | Interactive dashboard: EDA, campaign analysis, model benchmarking, live predictor |
-| `docs/Project_Report.pdf` | Written report |
-| `docs/images/` | README figures |
+
+| `images/` | README figures |
 | `data/` | Put the dataset here (not included) |
 
 ## Run it locally

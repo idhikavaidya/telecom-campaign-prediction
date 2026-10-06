@@ -2,24 +2,60 @@
 
 Predicting which customers will subscribe to a new telecom plan, so marketing can stop calling people who won't convert.
 
+**Why it matters:** in this campaign about 9 out of 10 calls ended in a "no." A model that ranks customers by how likely they are to subscribe lets a sales team make fewer calls and still win most of the sign-ups.
+
 **Results at a glance**
 - **LightGBM** was the best of 7 models, with **ROC-AUC 0.795** (5-fold CV: 0.773 ± 0.009)
 - **3.5× lift** in conversion rate: precision of 0.398 vs. an 11.3% baseline
 - **Wasted calls cut from 88.7% to 60.2%** while still reaching **61% of true subscribers**
 - Built a leakage-free pipeline: call duration excluded, SMOTEENN applied only inside training folds
 
-
-
 ![Dashboard](images/dashboard.jpeg)
 
 ---
 
 ## Business problem
-A telecom company contacted 41,188 customers about a new plan, and only **11.26% subscribed**. Calling everyone wastes most of the campaign budget. The goal is to find who is likely to say yes, and when and how to reach them.
+A telecom company contacted 41,188 customers by phone about a new plan, and only **11.26% subscribed**. Calling everyone wastes most of the campaign budget. The goal is to find who is likely to say yes, and when and how to reach them.
+
+## The data
+Each row is one customer contacted during the campaign, with **21 columns** in four groups:
+
+| Group | Example columns | What it tells us |
+|---|---|---|
+| **Customer profile** | age, job type, marital status, education, loans, credit default | Who the customer is |
+| **Current campaign** | contact method (cellular/telephone), month, day of week, number of calls | How and when they were contacted |
+| **Past campaigns** | days since last contact, previous contacts, previous outcome | Whether they've responded before |
+| **Economic context** | 3-month Euribor rate, employment variation, consumer price and confidence indices, number of employees | The economic climate at the time of the call |
+
+**Target:** `is_subscribed` (yes/no). Only 11.26% of customers said yes, so the classes are heavily imbalanced.
+
+**Data quality notes**
+- No missing values, but 6 columns contain `"unknown"`, for example 20.9% of `has_credit_default`. I kept it as its own category rather than guessing.
+- I removed 12 duplicate rows, leaving 41,168 records.
+- I excluded `call_duration_sec`. It's the strongest predictor, but it's only known *after* the call ends, so using it would leak the answer into the model.
+- The raw file is semicolon-delimited and isn't included in this repo (see [Run it locally](#run-it-locally)).
+
+## Workflow
+
+```mermaid
+flowchart TD
+    A["Raw data<br/>41,188 customers · 21 columns"] --> B["Cleaning<br/>remove duplicates · keep 'unknown' · parse types"]
+    B --> C["EDA & statistical tests<br/>chi-square · point-biserial · VIF"]
+    C --> D["Feature preparation<br/>drop call duration (leakage) · encode · select 10 features"]
+    D --> E["80/20 stratified split"]
+    E --> F["Train set"]
+    E --> G["Test set<br/>(untouched until evaluation)"]
+    F --> H["SMOTEENN resampling<br/>inside the pipeline"]
+    H --> I["Train 7 models<br/>LR · Ridge · DT · RF · NB · KNN · LightGBM"]
+    I --> J["Tune best model<br/>GridSearchCV + 5-fold CV"]
+    J --> K["Evaluate on test set<br/>ROC-AUC · precision · recall · F1"]
+    G --> K
+    K --> L["Business insights<br/>+ Dash dashboard"]
+```
 
 ## Approach
 1. **Cleaning:** parsed a semicolon-delimited file, removed 12 duplicates, and kept "unknown" as its own category
-2. **EDA and statistics:** chi-square tests (all categorical features significant, p < 0.001), point-biserial correlations, VIF (found severe multicollinearity in the macroeconomic features)
+2. **EDA and statistics:** chi-square tests (all categorical features significant, p < 0.001), point-biserial correlations, and VIF, which found severe multicollinearity in the economic features
 3. **Leakage control:** dropped `call_duration_sec`, which is only known after the call ends
 4. **Feature selection:** ExtraTrees importance, which kept 10 features
 5. **Imbalance:** SMOTEENN inside an sklearn Pipeline, so synthetic samples never touch the test data
@@ -38,26 +74,26 @@ A telecom company contacted 41,188 customers about a new plan, and only **11.26%
 | Ridge LR | 0.254 | 0.733 | 0.377 | 0.775 |
 | KNN | 0.215 | 0.707 | 0.330 | 0.746 |
 
-ROC-AUC was the main metric. With 88.7% negatives, a model that always predicts "no" gets about 89% accuracy while finding zero subscribers, so accuracy is misleading here.
+ROC-AUC was the main metric. With 88.7% negatives, a model that always predicts "no" gets about 89% accuracy while finding zero subscribers, so accuracy is misleading here. LightGBM and Random Forest are nearly tied on AUC; I chose LightGBM for its clearly better precision and F1.
 
 ![Model comparison](images/model_comparison.png)
 
 ## Key insights
-- **Re-contact past converters:** a successful previous campaign was the strongest behavioural predictor (χ² = 4217.7).
-- **Target retired and student customers:** they subscribed at 76.3% and 51.4%, compared with 9.8% for blue-collar workers.
-- **Timing matters:** the 3-month Euribor rate and number of employees were the top predictors. Subscriptions rose when rates were low, and peaked in March, September and October.
-- **Use cellular and cap at 3 calls:** cellular beat telephone, and conversion falls sharply after the third contact.
+- **Re-contact past converters:** customers whose previous campaign succeeded subscribed at **65.1%**, compared with an 11.3% average.
+- **Target the 60+ and 18–30 age groups:** customers aged 60+ subscribed at 45.5% and those aged 18–30 at 15.2%. By job type, students (31.4%) and retired customers (25.2%) led, while blue-collar workers were lowest (6.9%).
+- **Timing matters:** subscriptions were higher when the 3-month Euribor rate was low, and peaked in March, September and October.
+- **Use cellular and cap at 3 calls:** cellular converted at 14.7% vs. 5.2% for telephone, and conversion falls steadily after the third contact.
 
 ![Subscription rate by previous outcome](images/prev_outcome.png)
 
 ## Limitations
 - The random train/test split may overstate real-world performance, so a time-based split is the next step.
 - The data reflects a single economic period, so the model would need periodic retraining.
-- Label encoding treats nominal categories as ordered, and one-hot encoding is planned instead.
+- Label encoding treats nominal categories as ordered; one-hot encoding is planned instead.
 - Grid search slightly reduced AUC (0.7946 → 0.7905), so Optuna is a planned upgrade.
 
 ## Tech stack
-Python · pandas · scikit-learn · imbalanced-learn · LightGBM · statsmodels · SciPy · Plotly Dash
+Python · pandas · scikit-learn · imbalanced-learn · LightGBM · statsmodels · SciPy · matplotlib · seaborn · Plotly Dash
 
 ## Repository structure
 
@@ -65,21 +101,5 @@ Python · pandas · scikit-learn · imbalanced-learn · LightGBM · statsmodels 
 |---|---|
 | `notebooks/Marketing_Campaign_Analysis.ipynb` | Full analysis: cleaning, EDA, statistical tests, modelling, tuning |
 | `telecom_dashboard.py` | Interactive dashboard: EDA, campaign analysis, model benchmarking, live predictor |
-
 | `images/` | README figures |
-| `data/` | Put the dataset here (not included) |
-
-## Run it locally
-
-```bash
-pip install -r requirements.txt
-# put TeleCom_Data-1.csv in data/ (or set TELECOM_DATA_PATH)
-python telecom_dashboard.py
-```
-
-Open http://127.0.0.1:8050. On startup the app trains all models, which takes about a minute because of SMOTEENN.
-
-The dataset (`TeleCom_Data-1.csv`, semicolon-delimited) isn't included. The notebook was written in Google Colab and reads from `/content/TeleCom_Data-1.csv`, so update that path if you run it locally.
-
----
-*Master of Data Science and Innovation, UTS* · [Your name] · [LinkedIn]
+| `data/` |
